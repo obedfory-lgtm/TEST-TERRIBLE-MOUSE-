@@ -218,7 +218,7 @@ public actor MemoryScanner {
         func decode(_ source: String) throws -> MemoryValue {
             try type.decode(type.encode(source, byteOrder: byteOrder), byteOrder: byteOrder)
         }
-        switch criterion {
+        return switch criterion {
         case .unknown: return nil
         case .exact(let value), .greaterThan(let value), .lessThan(let value): return (try decode(value), nil)
         case .between(let low, let high): return (try decode(low), try decode(high))
@@ -282,7 +282,7 @@ public actor MemoryScanner {
 
     private func stringMatches(_ value: String, target: String, mode: StringMatchMode, caseSensitive: Bool) -> Bool {
         let options: String.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
-        switch mode {
+        return switch mode {
         case .exact: value.compare(target, options: options) == .orderedSame
         case .prefix: value.range(of: target, options: options.union(.anchored))?.lowerBound == value.startIndex
         case .suffix: value.range(of: target, options: options.union(.anchored).union(.backwards))?.upperBound == value.endIndex

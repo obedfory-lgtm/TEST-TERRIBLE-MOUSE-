@@ -47,8 +47,8 @@ public actor SnapshotStore {
             guard let fileSize = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize,
                 fileSize <= (overflow ? Int.max : fileLimit) else { throw MemoryEngineError.snapshotLimitExceeded }
             let snapshot = try JSONDecoder().decode(MemorySnapshot.self, from: Data(contentsOf: file))
-            let (newTotal, overflow) = total.addingReportingOverflow(snapshot.capturedByteCount)
-            guard !overflow, newTotal <= maximumTotalBytes else {
+            let (newTotal, totalOverflow) = total.addingReportingOverflow(snapshot.capturedByteCount)
+            guard !totalOverflow, newTotal <= maximumTotalBytes else {
                 throw MemoryEngineError.snapshotLimitExceeded
             }
             guard snapshot.checksum == Self.checksum(snapshot.regions) else {

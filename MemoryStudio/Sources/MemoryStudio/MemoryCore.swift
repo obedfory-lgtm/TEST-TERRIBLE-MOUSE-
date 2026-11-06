@@ -218,7 +218,7 @@ public enum MemoryValue: Codable, Equatable, Sendable, CustomStringConvertible {
     }
 
     public func compared(to other: MemoryValue, tolerance: Double = 0) -> ComparisonResult? {
-        switch (self, other) {
+        return switch (self, other) {
         case (.signed(let lhs), .signed(let rhs)):
             lhs == rhs ? .orderedSame : (lhs < rhs ? .orderedAscending : .orderedDescending)
         case (.unsigned(let lhs), .unsigned(let rhs)):
