@@ -56,7 +56,7 @@ public struct DiagnosticWorkspaceView: View {
         _registry = State(initialValue: registry)
     }
 
-    var body: some View {
+    public var body: some View {
         ZStack(alignment: .bottomTrailing) {
             TabView(selection: $selectedTab) {
                 DashboardView(
