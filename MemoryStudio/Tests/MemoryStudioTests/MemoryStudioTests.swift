@@ -186,7 +186,20 @@ final class MemoryStudioTests: XCTestCase {
         XCTAssertEqual(restoredCandidates.count, 1)
 
         let manager = ExportManager()
-        let payload = ExportPayload(results: [result])
+        let snapshotRegion = SnapshotRegion(
+            regionID: result.regionID,
+            regionName: "owned",
+            byteCount: 2,
+            bytes: Data([0x12, 0x34])
+        )
+        let snapshot = MemorySnapshot(
+            id: UUID(),
+            name: "export-fixture",
+            createdAt: Date(),
+            regions: [snapshotRegion],
+            checksum: "fixture-checksum"
+        )
+        let payload = ExportPayload(results: [result], snapshots: [snapshot])
         for format in ExportFormat.allCases {
             var options = ExportOptions()
             options.includeRawBytes = true
