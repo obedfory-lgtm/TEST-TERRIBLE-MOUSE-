@@ -1,0 +1,94 @@
+name: iPhone ARM64 dylib
+
+on:
+  push:
+    paths:
+      - "MemoryStudio/**"
+      - ".github/workflows/iphone-dylib.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-iphone-dylib:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: MemoryStudio
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build iOS device dylib and host framework
+        id: device-build
+        shell: bash
+        run: |
+          mkdir -p build-logs build-artifacts
+          set -o pipefail
+          xcodebuild \
+            -project MemoryStudio.xcodeproj \
+            -scheme DiagnosticHost \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath .derivedData/device \
+            DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build-logs/device-build.log
+          products='.derivedData/device/Build/Products/Release-iphoneos'
+          framework="$products/MemoryStudio.framework"
+          dylib="$products/MemoryStudio.dylib"
+          test -d "$framework"
+          test -f "$dylib"
+          framework_architectures="$(xcrun lipo -archs "$framework/MemoryStudio")"
+          dylib_architectures="$(xcrun lipo -archs "$dylib")"
+          printf 'Framework architectures: %s\nDylib architectures: %s\n' \
+            "$framework_architectures" "$dylib_architectures" | tee build-logs/architecture-check.log
+          [[ "$framework_architectures" == *arm64* ]]
+          [[ "$dylib_architectures" == *arm64* ]]
+          xcrun otool -hv "$dylib" | tee build-logs/dylib-mach-o.log
+          grep -Eq '(^|[[:space:]])DYLIB([[:space:]]|$)' build-logs/dylib-mach-o.log
+          file "$dylib" | tee build-logs/dylib-file-type.log
+          ditto "$framework" build-artifacts/MemoryStudio.framework
+          cp "$dylib" build-artifacts/MemoryStudio.dylib
+          if [[ -d "$dylib.dSYM" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent "$dylib.dSYM" build-artifacts/MemoryStudio-dylib.dSYM.zip
+          fi
+          if [[ -d "$framework.dSYM" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent "$framework.dSYM" build-artifacts/MemoryStudio-framework.dSYM.zip
+          fi
+          printf '# iPhone ARM64 Build Report\n\n- Build: passed\n- Architecture: %s\n- Mach-O: DYLIB\n' "$dylib_architectures" > build-artifacts/BuildReport.md
+
+      - name: Upload compiled iPhone dylib and framework
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-iOS-ARM64.dylib
+          if-no-files-found: warn
+          path: |
+            MemoryStudio/build-artifacts/MemoryStudio.dylib
+            MemoryStudio/build-artifacts/MemoryStudio.framework/**
+            MemoryStudio/build-artifacts/BuildReport.md
+
+      - name: Upload debug symbols and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-iOS-build-diagnostics
+          if-no-files-found: warn
+          path: |
+            MemoryStudio/build-artifacts/MemoryStudio-dylib.dSYM.zip
+            MemoryStudio/build-artifacts/MemoryStudio-framework.dSYM.zip
+            MemoryStudio/build-logs/**
