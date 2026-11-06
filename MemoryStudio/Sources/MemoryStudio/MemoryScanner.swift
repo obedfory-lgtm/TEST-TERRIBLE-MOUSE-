@@ -218,7 +218,7 @@ public actor MemoryScanner {
         func decode(_ source: String) throws -> MemoryValue {
             try type.decode(type.encode(source, byteOrder: byteOrder), byteOrder: byteOrder)
         }
-        return switch criterion {
+        switch criterion {
         case .unknown: return nil
         case .exact(let value), .greaterThan(let value), .lessThan(let value): return (try decode(value), nil)
         case .between(let low, let high): return (try decode(low), try decode(high))
@@ -232,10 +232,10 @@ public actor MemoryScanner {
     ) -> Bool {
         guard let expected else { return true }
         switch criterion {
-        case .unknown: true
-        case .exact: value.compared(to: expected.0, tolerance: tolerance) == .orderedSame
-        case .greaterThan: value.compared(to: expected.0, tolerance: tolerance) == .orderedDescending
-        case .lessThan: value.compared(to: expected.0, tolerance: tolerance) == .orderedAscending
+        case .unknown: return true
+        case .exact: return value.compared(to: expected.0, tolerance: tolerance) == .orderedSame
+        case .greaterThan: return value.compared(to: expected.0, tolerance: tolerance) == .orderedDescending
+        case .lessThan: return value.compared(to: expected.0, tolerance: tolerance) == .orderedAscending
         case .between:
             guard let upper = expected.1,
                   let low = value.compared(to: expected.0, tolerance: tolerance),
