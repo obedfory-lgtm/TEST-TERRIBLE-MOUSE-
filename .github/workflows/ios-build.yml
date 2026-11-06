@@ -1,0 +1,47 @@
+name: iOS Build and Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build and run tests
+        run: >-
+          xcodebuild
+          -project DiagnosticHost.xcodeproj
+          -scheme DiagnosticHost
+          -destination 'platform=iOS Simulator,name=iPhone 16'
+          -derivedDataPath .derivedData
+          -resultBundlePath TestResults.xcresult
+          CODE_SIGNING_ALLOWED=NO
+          test
+
+      - name: Upload compiled app and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-memory-studio-ios-build
+          if-no-files-found: warn
+          path: |
+            DiagnosticHost.xcodeproj/**
+            .derivedData/Build/Products/Debug-iphonesimulator/DiagnosticHost.app/**
+            TestResults.xcresult/**

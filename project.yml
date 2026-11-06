@@ -1,0 +1,74 @@
+name: DiagnosticHost
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+targets:
+  MemoryEngine:
+    type: framework
+    platform: iOS
+    sources:
+      - Sources/MemoryEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.MemoryEngine
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: YES
+  DiagnosticHost:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/DiagnosticHost
+    dependencies:
+      - target: MemoryEngine
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHost
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  MemoryEngineTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/MemoryEngineTests
+    dependencies:
+      - target: MemoryEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.MemoryEngineTests
+        GENERATE_INFOPLIST_FILE: YES
+  DiagnosticHostUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - Tests/DiagnosticHostUITests
+    dependencies:
+      - target: DiagnosticHost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHostUITests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  DiagnosticHost:
+    build:
+      targets:
+        DiagnosticHost: all
+    test:
+      targets:
+        - MemoryEngineTests
+        - DiagnosticHostUITests
