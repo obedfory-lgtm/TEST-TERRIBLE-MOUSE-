@@ -1,0 +1,96 @@
+name: MemoryStudio
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  MemoryStudio:
+    type: framework
+    platform: iOS
+    sources:
+      - Sources/MemoryStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.example.MemoryStudio
+        PRODUCT_NAME: MemoryStudio
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: NO
+        MACH_O_TYPE: mh_dylib
+        GENERATE_INFOPLIST_FILE: YES
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+  MemoryStudioDylib:
+    type: library.dynamic
+    platform: iOS
+    sources:
+      - Sources/MemoryStudio
+    settings:
+      base:
+        PRODUCT_NAME: MemoryStudio
+        PRODUCT_MODULE_NAME: MemoryStudioDylib
+        EXECUTABLE_PREFIX: ""
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: NO
+        MACH_O_TYPE: mh_dylib
+        LD_DYLIB_INSTALL_NAME: "@rpath/MemoryStudio.dylib"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+  DiagnosticHost:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/DiagnosticHost
+    dependencies:
+      - target: MemoryStudio
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.example.DiagnosticHost
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  MemoryStudioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/MemoryStudioTests
+    dependencies:
+      - target: MemoryStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.example.MemoryStudioTests
+        GENERATE_INFOPLIST_FILE: YES
+  DiagnosticHostUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - Tests/DiagnosticHostUITests
+    dependencies:
+      - target: DiagnosticHost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.example.DiagnosticHostUITests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  DiagnosticHost:
+    build:
+      targets:
+        DiagnosticHost: all
+        MemoryStudioDylib: all
+    test:
+      targets:
+        - MemoryStudioTests
+        - DiagnosticHostUITests

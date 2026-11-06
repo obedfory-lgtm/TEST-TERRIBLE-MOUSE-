@@ -1,0 +1,177 @@
+name: MemoryStudio iOS Build
+
+on:
+  push:
+    paths:
+      - "MemoryStudio/**"
+      - ".github/workflows/memory-studio.yml"
+  pull_request:
+    paths:
+      - "MemoryStudio/**"
+      - ".github/workflows/memory-studio.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: MemoryStudio
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate --spec project.yml
+
+      - name: Run simulator tests
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p build-logs build-artifacts/crash-reports
+          set -o pipefail
+          xcodebuild \
+            -project MemoryStudio.xcodeproj \
+            -scheme DiagnosticHost \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath .derivedData/simulator \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee build-logs/simulator-tests.log
+
+      - name: Build ARM64 iOS framework and dylib
+        id: device-build
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build-logs build-artifacts
+          set -o pipefail
+          xcodebuild \
+            -project MemoryStudio.xcodeproj \
+            -scheme DiagnosticHost \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath .derivedData/device \
+            DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee build-logs/device-build.log
+          framework='.derivedData/device/Build/Products/Release-iphoneos/MemoryStudio.framework'
+          dylib='.derivedData/device/Build/Products/Release-iphoneos/MemoryStudio.dylib'
+          test -d "$framework"
+          test -f "$dylib"
+          framework_architectures="$(xcrun lipo -archs "$framework/MemoryStudio")"
+          dylib_architectures="$(xcrun lipo -archs "$dylib")"
+          printf 'Framework architectures: %s\nDylib architectures: %s\n' \
+            "$framework_architectures" "$dylib_architectures" | tee build-logs/architecture-check.log
+          [[ "$framework_architectures" == *arm64* ]]
+          [[ "$dylib_architectures" == *arm64* ]]
+          xcrun otool -hv "$dylib" | tee build-logs/dylib-mach-o.log
+          grep -Eq '(^|[[:space:]])DYLIB([[:space:]]|$)' build-logs/dylib-mach-o.log
+          file "$dylib" | tee build-logs/dylib-file-type.log
+          ditto "$framework" build-artifacts/MemoryStudio.framework
+          cp "$dylib" build-artifacts/MemoryStudio.dylib
+          device_products='.derivedData/device/Build/Products/Release-iphoneos'
+          found_dsym=false
+          if [[ -d "$device_products/MemoryStudio.dSYM" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent "$device_products/MemoryStudio.dSYM" build-artifacts/MemoryStudio-dylib.dSYM.zip
+            found_dsym=true
+          fi
+          if [[ -d "$framework.dSYM" ]]; then
+            ditto -c -k --sequesterRsrc --keepParent "$framework.dSYM" build-artifacts/MemoryStudio-framework.dSYM.zip
+            found_dsym=true
+          fi
+          if [[ "$found_dsym" == false ]]; then
+            printf 'Xcode did not emit dSYM files for this configuration.\n' > build-artifacts/DSYM-NOT-AVAILABLE.txt
+          fi
+
+      - name: Collect crash diagnostics and build report
+        if: always()
+        shell: bash
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          DEVICE_BUILD_OUTCOME: ${{ steps.device-build.outcome }}
+        run: |
+          mkdir -p build-artifacts/crash-reports build-logs
+          if [[ -d "$HOME/Library/Logs/DiagnosticReports" ]]; then
+            find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -type f \
+              \( -iname '*DiagnosticHost*.crash' -o -iname '*DiagnosticHost*.ips' -o -iname '*MemoryStudio*.crash' -o -iname '*MemoryStudio*.ips' \) \
+              -mmin -180 -exec cp -p {} build-artifacts/crash-reports/ \;
+          fi
+          if ! find build-artifacts/crash-reports -type f -print -quit | grep -q .; then
+            printf 'No matching OS-generated simulator crash report was produced in this run. TestResults.xcresult is retained separately.\n' \
+              > build-artifacts/crash-reports/NO-CRASH-REPORT.md
+          fi
+          {
+            printf '# MemoryStudio CI Report\n\n'
+            printf -- '- Simulator XCTest outcome: `%s`\n' "${TEST_OUTCOME:-not-run}"
+            printf -- '- Device framework and dylib build outcome: `%s`\n' "${DEVICE_BUILD_OUTCOME:-not-run}"
+            printf -- '- Target: iOS device, ARM64 and Mach-O `DYLIB` required for the dylib.\n'
+            if [[ -f build-logs/architecture-check.log ]]; then
+              printf -- '- Architecture evidence: `%s`\n' "$(tr '\n' ';' < build-logs/architecture-check.log)"
+            else
+              printf -- '- Architecture evidence: unavailable because the device build did not produce the framework.\n'
+            fi
+            printf -- '- Crash diagnostics: only OS-generated reports found on the runner are attached; no crash log is synthesized.\n'
+            printf -- '- Build logs and the XCTest result bundle are retained as workflow artifacts.\n'
+          } > build-artifacts/BuildReport.md
+          if [[ -d TestResults.xcresult ]]; then
+            xcrun xcresulttool get test-results summary --path TestResults.xcresult \
+              > build-artifacts/TestSummary.json 2> build-logs/xcresult-summary.log || true
+          fi
+          git archive --format=zip HEAD MemoryStudio .github/workflows/memory-studio.yml > ../MemoryStudio-source.zip
+
+      - name: Upload compiled ARM64 dynamic framework and binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-iOS-ARM64.dylib
+          if-no-files-found: warn
+          path: |
+            MemoryStudio/build-artifacts/MemoryStudio.dylib
+            MemoryStudio/build-artifacts/MemoryStudio.framework/**
+            MemoryStudio/build-artifacts/BuildReport.md
+
+      - name: Upload debug symbols
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-iOS-ARM64-dSYM
+          if-no-files-found: warn
+          path: |
+            MemoryStudio/build-artifacts/MemoryStudio-dylib.dSYM.zip
+            MemoryStudio/build-artifacts/MemoryStudio-framework.dSYM.zip
+            MemoryStudio/build-artifacts/DSYM-NOT-AVAILABLE.txt
+
+      - name: Upload source, logs, test results, and crash reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-build-and-crash-report
+          if-no-files-found: warn
+          path: |
+            MemoryStudio-source.zip
+            MemoryStudio/build-logs/**
+            MemoryStudio/build-artifacts/BuildReport.md
+            MemoryStudio/build-artifacts/TestSummary.json
+            MemoryStudio/build-artifacts/crash-reports/**
+            MemoryStudio/TestResults.xcresult/**
+
+      - name: Upload complete source archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryStudio-source
+          if-no-files-found: warn
+          path: MemoryStudio-source.zip
