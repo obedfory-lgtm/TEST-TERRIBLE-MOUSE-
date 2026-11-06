@@ -701,35 +701,35 @@ private struct ExportView: View {
                 Text(errorMessage ?? "")
             }
         }
+    }
 
-        @MainActor
-        private func captureSnapshot() async {
-            do {
-                let captured = try await snapshotStore.capture(
-                    name: snapshotName,
-                    regions: try await registry.snapshots()
-                )
-                snapshots.insert(captured, at: 0)
-                statusMessage = "Captured \(captured.capturedByteCount.formatted()) bytes."
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+    @MainActor
+    private func captureSnapshot() async {
+        do {
+            let captured = try await snapshotStore.capture(
+                name: snapshotName,
+                regions: try await registry.snapshots()
+            )
+            snapshots.insert(captured, at: 0)
+            statusMessage = "Captured \(captured.capturedByteCount.formatted()) bytes."
+        } catch {
+            errorMessage = error.localizedDescription
         }
+    }
 
-        @MainActor
-        private func refreshSnapshots() async {
-            snapshots = await snapshotStore.list()
-        }
+    @MainActor
+    private func refreshSnapshots() async {
+        snapshots = await snapshotStore.list()
+    }
 
-        private var selectedResults: [ScanResult] {
-            let selected = results.filter { selectedIDs.contains($0.id) }
-            return selected.isEmpty ? results : selected
-        }
+    private var selectedResults: [ScanResult] {
+        let selected = results.filter { selectedIDs.contains($0.id) }
+        return selected.isEmpty ? results : selected
+    }
 
-        private var exportFilename: String {
-            let suffix = ".\(format.fileExtension)"
-            return filename.lowercased().hasSuffix(suffix) ? filename : filename + suffix
-        }
+    private var exportFilename: String {
+        let suffix = ".\(format.fileExtension)"
+        return filename.lowercased().hasSuffix(suffix) ? filename : filename + suffix
     }
 }
 
