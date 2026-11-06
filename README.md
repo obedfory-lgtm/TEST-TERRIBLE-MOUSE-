@@ -28,6 +28,8 @@ The exact simulator destination depends on the Xcode installation. A signed devi
 
 GitHub Actions runs XcodeGen generation and simulator tests on macOS for branch pushes, pull requests, or a manual `workflow_dispatch`. The workflow uploads the generated project, built simulator app, and XCTest result bundle.
 
+The same workflow also builds `MemoryEngine.xcframework` for iOS devices and the iOS Simulator and uploads it as the `MemoryEngine-iOS-XCFramework` artifact. To download it, open the successful workflow run in the repository's **Actions** tab and download that artifact. GitHub's artifact download is a ZIP containing the XCFramework bundle. This is the iOS-compatible distribution format; it cannot be built as an iOS binary directly on Linux, so the build runs on GitHub's macOS runner.
+
 ## Registering host-owned buffers
 
 Create a `MemoryRegionRegistry` in the host, pass the same registry into `DiagnosticWorkspaceView`, and register only memory owned by that host:

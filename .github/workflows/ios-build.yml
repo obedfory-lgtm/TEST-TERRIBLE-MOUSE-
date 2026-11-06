@@ -6,6 +6,60 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-framework:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build iOS device framework
+        run: >-
+          xcodebuild
+          -project DiagnosticHost.xcodeproj
+          -target MemoryEngine
+          -configuration Release
+          -sdk iphoneos
+          -derivedDataPath .frameworkDerivedData
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Build iOS Simulator framework
+        run: >-
+          xcodebuild
+          -project DiagnosticHost.xcodeproj
+          -target MemoryEngine
+          -configuration Release
+          -sdk iphonesimulator
+          -derivedDataPath .frameworkDerivedData
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Create XCFramework
+        run: >-
+          xcodebuild -create-xcframework
+          -framework .frameworkDerivedData/Build/Products/Release-iphoneos/MemoryEngine.framework
+          -framework .frameworkDerivedData/Build/Products/Release-iphonesimulator/MemoryEngine.framework
+          -output MemoryEngine.xcframework
+
+      - name: Upload XCFramework
+        uses: actions/upload-artifact@v4
+        with:
+          name: MemoryEngine-iOS-XCFramework
+          path: MemoryEngine.xcframework
+          if-no-files-found: error
+
   build-and-test:
     runs-on: macos-15
     timeout-minutes: 45
