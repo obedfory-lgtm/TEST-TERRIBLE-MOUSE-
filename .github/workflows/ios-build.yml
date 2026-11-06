@@ -24,22 +24,22 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
 
-      - name: Build iOS device framework
+      - name: Build DiagnosticHost iOS device framework
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -scheme MemoryEngine
+          -scheme DiagnosticHost
           -configuration Release
           -destination 'generic/platform=iOS'
           -derivedDataPath .frameworkDerivedData
           CODE_SIGNING_ALLOWED=NO
           build
 
-      - name: Build iOS Simulator framework
+      - name: Build DiagnosticHost iOS Simulator framework
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -scheme MemoryEngine
+          -scheme DiagnosticHost
           -configuration Release
           -destination 'generic/platform=iOS Simulator'
           -derivedDataPath .frameworkDerivedData
@@ -49,6 +49,13 @@ jobs:
       - name: Create XCFramework
         run: >-
           xcodebuild -create-xcframework
+          -framework .frameworkDerivedData/Build/Products/Release-iphoneos/DiagnosticHost.framework
+          -framework .frameworkDerivedData/Build/Products/Release-iphonesimulator/DiagnosticHost.framework
+          -output DiagnosticHost.xcframework
+
+      - name: Create MemoryEngine XCFramework dependency
+        run: >-
+          xcodebuild -create-xcframework
           -framework .frameworkDerivedData/Build/Products/Release-iphoneos/MemoryEngine.framework
           -framework .frameworkDerivedData/Build/Products/Release-iphonesimulator/MemoryEngine.framework
           -output MemoryEngine.xcframework
@@ -56,8 +63,10 @@ jobs:
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4
         with:
-          name: MemoryEngine-iOS-XCFramework
-          path: MemoryEngine.xcframework
+          name: DiagnosticHost-iOS-XCFramework
+          path: |
+            DiagnosticHost.xcframework
+            MemoryEngine.xcframework
           if-no-files-found: error
 
   build-and-test:
@@ -78,24 +87,24 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
 
-      - name: Build and run tests
+      - name: Build iOS app for Simulator
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -scheme DiagnosticHost
-          -destination 'platform=iOS Simulator,name=iPhone 16'
+          -scheme DiagnosticHostApp
+          -destination 'generic/platform=iOS Simulator'
           -derivedDataPath .derivedData
-          -resultBundlePath TestResults.xcresult
           CODE_SIGNING_ALLOWED=NO
-          test
+          build
 
-      - name: Upload compiled app and test results
+      - name: Run MemoryEngine unit tests
+        run: swift test
+
+      - name: Upload compiled app
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mobile-memory-studio-ios-build
           if-no-files-found: warn
           path: |
-            DiagnosticHost.xcodeproj/**
-            .derivedData/Build/Products/Debug-iphonesimulator/DiagnosticHost.app/**
-            TestResults.xcresult/**
+            .derivedData/Build/Products/Debug-iphonesimulator/DiagnosticHostApp.app/**

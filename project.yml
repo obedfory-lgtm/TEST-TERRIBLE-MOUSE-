@@ -20,16 +20,33 @@ targets:
         BUILD_LIBRARY_FOR_DISTRIBUTION: YES
         SKIP_INSTALL: YES
   DiagnosticHost:
+    type: framework
+    platform: iOS
+    sources:
+      - path: Sources/DiagnosticHost
+        excludes:
+          - DiagnosticHostApp.swift
+    dependencies:
+      - target: MemoryEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHost
+        DEFINES_MODULE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: YES
+  DiagnosticHostApp:
     type: application
     platform: iOS
     sources:
-      - Sources/DiagnosticHost
+      - Sources/DiagnosticHost/DiagnosticHostApp.swift
     dependencies:
+      - target: DiagnosticHost
+        embed: true
       - target: MemoryEngine
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHost
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHostApp
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -58,7 +75,7 @@ targets:
     sources:
       - Tests/DiagnosticHostUITests
     dependencies:
-      - target: DiagnosticHost
+      - target: DiagnosticHostApp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHostUITests
@@ -72,6 +89,10 @@ schemes:
     build:
       targets:
         DiagnosticHost: all
+  DiagnosticHostApp:
+    build:
+      targets:
+        DiagnosticHostApp: all
     test:
       targets:
         - MemoryEngineTests

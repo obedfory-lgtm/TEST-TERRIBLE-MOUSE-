@@ -40,7 +40,7 @@ private struct EmptyState: View {
     }
 }
 
-struct DiagnosticWorkspaceView: View {
+public struct DiagnosticWorkspaceView: View {
     @State private var registry: MemoryRegionRegistry
     @State private var scanner = MemoryScanner()
     @State private var snapshotStore = SnapshotStore()
@@ -52,7 +52,7 @@ struct DiagnosticWorkspaceView: View {
     @State private var overlayExpanded = false
     @State private var errorMessage: String?
 
-    init(registry: MemoryRegionRegistry = MemoryRegionRegistry()) {
+    public init(registry: MemoryRegionRegistry = MemoryRegionRegistry()) {
         _registry = State(initialValue: registry)
     }
 

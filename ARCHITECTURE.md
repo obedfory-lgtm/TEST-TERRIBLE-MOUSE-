@@ -4,7 +4,7 @@
 
 `MemoryEngine` is a dynamic Swift framework target and a Swift package library. It has no dependency on SwiftUI. The engine owns authorized region registration, range-checked provider reads, scanning, snapshots, observation, session metadata, and export serialization.
 
-`DiagnosticHost` is the SwiftUI iOS application. Its startup registers host-owned numeric, text, and binary sample buffers with the engine. A caller with a real application-owned buffer can supply a `RegisteredBufferAccess` provider; reads are constrained to the registered logical range. No process attachment or arbitrary address dereference is used.
+`DiagnosticHost` is the SwiftUI dynamic framework. It contains the reusable diagnostic UI and links to `MemoryEngine`. `DiagnosticHostApp` is a separate iOS application target that launches this framework and registers host-owned numeric, text, and binary sample buffers. A caller with a real application-owned buffer can supply a `RegisteredBufferAccess` provider; reads are constrained to the registered logical range. No process attachment or arbitrary address dereference is used.
 
 `MemoryEngineTests` exercises the portable engine APIs. `DiagnosticHostUITests` verifies the main tab flow and confirms sample registration is visible on launch.
 
@@ -19,9 +19,9 @@
 
 ## Build and CI
 
-`project.yml` is the source of truth for XcodeGen. GitHub Actions on macOS generates `DiagnosticHost.xcodeproj`, builds the app and embedded framework, runs both test targets on an iOS Simulator, and uploads the generated project, simulator app, and test-result bundle.
+`project.yml` is the source of truth for XcodeGen. GitHub Actions on macOS builds `DiagnosticHost.xcframework` and its `MemoryEngine.xcframework` dependency for device and simulator, builds the launcher app, and runs portable engine unit tests. The UI framework is distributed as a framework bundle because iOS dynamic libraries must be embedded in an app; it is not a standalone executable.
 
-The local `Package.swift` provides a framework-only test route on a machine with Swift and the required Apple SDKs. iOS UI tests require Xcode and an iOS Simulator.
+The local `Package.swift` provides a test route for the engine on a machine with Swift. iOS framework and app builds require Xcode and the Apple SDKs.
 
 ## Boundaries
 

@@ -5,7 +5,7 @@ An iOS 16+ SwiftUI diagnostic host backed by an embedded `MemoryEngine` dynamic 
 ## Project layout
 
 - `Sources/MemoryEngine` — registered-region registry, numeric and byte scanning, snapshots, metadata-only session persistence, and export serialization.
-- `Sources/DiagnosticHost` — mobile tab navigation, scanner/results screens, in-app draggable overlay, memory map, and Files document export.
+- `Sources/DiagnosticHost` — reusable dynamic `DiagnosticHost` framework UI plus the small `DiagnosticHostApp` launcher.
 - `Tests/MemoryEngineTests` — engine, scan, snapshot, session, and export tests.
 - `Tests/DiagnosticHostUITests` — basic navigation and overlay UI test.
 - `project.yml` — XcodeGen project definition for the host, embedded dynamic framework, and test targets.
@@ -18,17 +18,17 @@ The repository does not include the referenced `3105_DiagnosticBridge_Source.zip
 
 ```sh
 xcodegen generate
-xcodebuild -project DiagnosticHost.xcodeproj -scheme DiagnosticHost \
+xcodebuild -project DiagnosticHost.xcodeproj -scheme DiagnosticHostApp \
   -destination 'generic/platform=iOS Simulator' build
-xcodebuild -project DiagnosticHost.xcodeproj -scheme DiagnosticHost \
+xcodebuild -project DiagnosticHost.xcodeproj -scheme DiagnosticHostApp \
   -destination 'platform=iOS Simulator,name=iPhone 16' test
 ```
 
 The exact simulator destination depends on the Xcode installation. A signed device build requires a configured Apple development team. Swift/Xcode are not installed in the authoring environment, so no iOS build or test run is claimed here.
 
-GitHub Actions runs XcodeGen generation and simulator tests on macOS for branch pushes, pull requests, or a manual `workflow_dispatch`. The workflow uploads the generated project, built simulator app, and XCTest result bundle.
+`DiagnosticHost` is built as a dynamic iOS framework (`DiagnosticHost.framework`), with a separate `DiagnosticHostApp` target to launch and demonstrate its UI. A framework is the iOS distribution bundle for a dynamic library; it must be embedded in an iOS app and cannot be launched by itself.
 
-The same workflow also builds `MemoryEngine.xcframework` for iOS devices and the iOS Simulator and uploads it as the `MemoryEngine-iOS-XCFramework` artifact. To download it, open the successful workflow run in the repository's **Actions** tab and download that artifact. GitHub's artifact download is a ZIP containing the XCFramework bundle. This is the iOS-compatible distribution format; it cannot be built as an iOS binary directly on Linux, so the build runs on GitHub's macOS runner.
+GitHub Actions runs on a macOS runner and builds `DiagnosticHost.xcframework` and its `MemoryEngine.xcframework` dependency for iOS devices and the iOS Simulator. It uploads both as the `DiagnosticHost-iOS-XCFramework` artifact. The app build and engine unit tests run in a separate job. Download the artifact from a successful framework job in the repository's **Actions** tab; it contains both XCFramework bundles.
 
 ## Registering host-owned buffers
 
