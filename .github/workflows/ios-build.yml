@@ -28,7 +28,7 @@ jobs:
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -scheme DiagnosticHost
+          -scheme MemoryEngine
           -configuration Release
           -destination 'generic/platform=iOS'
           -derivedDataPath .frameworkDerivedData
@@ -39,7 +39,7 @@ jobs:
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -scheme DiagnosticHost
+          -scheme MemoryEngine
           -configuration Release
           -destination 'generic/platform=iOS Simulator'
           -derivedDataPath .frameworkDerivedData

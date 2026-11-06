@@ -64,6 +64,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.DiagnosticHostUITests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
+  MemoryEngine:
+    build:
+      targets:
+        MemoryEngine: all
   DiagnosticHost:
     build:
       targets:
