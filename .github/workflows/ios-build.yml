@@ -28,9 +28,9 @@ jobs:
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -target MemoryEngine
+          -scheme DiagnosticHost
           -configuration Release
-          -sdk iphoneos
+          -destination 'generic/platform=iOS'
           -derivedDataPath .frameworkDerivedData
           CODE_SIGNING_ALLOWED=NO
           build
@@ -39,9 +39,9 @@ jobs:
         run: >-
           xcodebuild
           -project DiagnosticHost.xcodeproj
-          -target MemoryEngine
+          -scheme DiagnosticHost
           -configuration Release
-          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
           -derivedDataPath .frameworkDerivedData
           CODE_SIGNING_ALLOWED=NO
           build

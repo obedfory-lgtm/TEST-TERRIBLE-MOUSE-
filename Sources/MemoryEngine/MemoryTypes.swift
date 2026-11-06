@@ -232,19 +232,27 @@ public enum MemoryValue: Equatable, Sendable, CustomStringConvertible {
     public func compared(to other: MemoryValue, tolerance: Double = 0) -> ComparisonResult? {
         switch (self, other) {
         case (.signed(let lhs), .signed(let rhs)):
-            lhs == rhs ? .orderedSame : (lhs < rhs ? .orderedAscending : .orderedDescending)
+            return lhs == rhs
+                ? ComparisonResult.orderedSame
+                : (lhs < rhs ? .orderedAscending : .orderedDescending)
         case (.unsigned(let lhs), .unsigned(let rhs)):
-            lhs == rhs ? .orderedSame : (lhs < rhs ? .orderedAscending : .orderedDescending)
+            return lhs == rhs
+                ? ComparisonResult.orderedSame
+                : (lhs < rhs ? .orderedAscending : .orderedDescending)
         case (.floating(let lhs), .floating(let rhs)):
             guard lhs.isFinite, rhs.isFinite else { return nil }
-            if abs(lhs - rhs) <= tolerance { return .orderedSame }
+            if abs(lhs - rhs) <= tolerance { return ComparisonResult.orderedSame }
             return lhs < rhs ? .orderedAscending : .orderedDescending
         case (.boolean(let lhs), .boolean(let rhs)):
-            lhs == rhs ? .orderedSame : (lhs == false ? .orderedAscending : .orderedDescending)
+            return lhs == rhs
+                ? ComparisonResult.orderedSame
+                : (lhs == false ? .orderedAscending : .orderedDescending)
         case (.text(let lhs), .text(let rhs)):
-            lhs == rhs ? .orderedSame : (lhs < rhs ? .orderedAscending : .orderedDescending)
+            return lhs == rhs
+                ? ComparisonResult.orderedSame
+                : (lhs < rhs ? .orderedAscending : .orderedDescending)
         default:
-            nil
+            return nil
         }
     }
 }
